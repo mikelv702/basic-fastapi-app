@@ -5,21 +5,37 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 
-from .auth.models import User, Token
+from .auth.schemas import User, Token, UserCreate
 from .auth.basic import (authenticate_user,
                          fake_users_db,
                          ACCESS_TOKEN_EXPIRE_MINUTES,
                          create_access_token,
                          get_current_active_user)
+from .auth.crud import get_user_by_email, create_user
+
+from sqlalchemy.orm import Session
+from .database import SessionLocal, engine
+
 
 app = FastAPI()
+
+# Dependency
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 @app.post("/token")
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    db: Session = Depends(get_db)
 ) -> Token:
-    user = authenticate_user(fake_users_db, form_data.username, form_data.password)
+    user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -31,6 +47,15 @@ async def login_for_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
     return Token(access_token=access_token, token_type="bearer")
+
+
+@app.post("/users/")
+def create_new_user(user: UserCreate, db: Session = Depends(get_db)):
+    db_user = get_user_by_email(db, email=user.email)
+    if db_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    return create_user(db=db, user=user)
 
 
 @app.get("/users/me/", response_model=User)

@@ -1,21 +1,19 @@
-from pydantic import BaseModel
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
+from sqlalchemy.orm import relationship
+
+from ..database import Base
+from ..models import Item
 
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str
+class User(Base):
+    __tablename__ = "users"
 
+    id = Column(Integer, primary_key=True)
+    username = Column(String, unique=True)
+    email = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
+    is_active = Column(Boolean, default=False)
+    full_name = Column(String)
 
-class TokenData(BaseModel):
-    username: str | None = None
+    items = relationship("Item", back_populates="owner")
 
-
-class User(BaseModel):
-    username: str
-    email: str | None = None
-    full_name: str | None = None
-    disabled: bool | None = None
-
-
-class UserInDB(User):
-    hashed_password: str
