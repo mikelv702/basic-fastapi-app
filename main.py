@@ -50,7 +50,7 @@ async def login_for_access_token(
 
 
 @app.post("/users/")
-def create_new_user(user: UserCreate, db: Session = Depends(get_db)):
+def register_new_user(user: UserCreate, db: Session = Depends(get_db)):
     db_user = get_user_by_email(db, email=user.email)
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
